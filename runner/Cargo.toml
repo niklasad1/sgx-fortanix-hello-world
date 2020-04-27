@@ -1,0 +1,13 @@
+[package]
+name = "runner"
+version = "0.1.0"
+authors = ["Niklas <niklasadolfsson1@gmail.com>"]
+edition = "2018"
+
+[dependencies]
+aesm-client = { version = "0.4", features = ["sgxs"] }
+enclave-runner = "0.2"
+futures = "0.1.21"
+sgxs-loaders = "0.2.1"
+tokio = "0.1"
+hyper = "0.12"

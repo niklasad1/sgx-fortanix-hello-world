@@ -1,0 +1,9 @@
+[package]
+name = "enclave"
+version = "0.1.0"
+authors = ["Niklas <niklasadolfsson1@gmail.com>"]
+edition = "2018"
+
+[dependencies]
+rand_core = { version = "0.4", default-features = false }
+rdrand = "0.6.0"
