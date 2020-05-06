@@ -48,15 +48,15 @@ fn main() {
     enclave_builder.dummy_signature();
     let enclave = enclave_builder.build(&mut device).unwrap();
 
-    let _handle = std::thread::spawn(move || {
-        let addr = ([127, 0, 0, 1], 62000).into();
-        let server = Server::bind(&addr)
-            .serve(|| service_fn(fetch_enclave_randomness))
-            .map_err(|e| eprintln!("server error: {}", e));
-
-        println!("HTTP Server listening on http://{}", addr);
-        hyper::rt::run(server);
-    });
+    // let _handle = std::thread::spawn(move || {
+    //     let addr = ([127, 0, 0, 1], 62000).into();
+    //     let server = Server::bind(&addr)
+    //         .serve(|| service_fn(fetch_enclave_randomness))
+    //         .map_err(|e| eprintln!("server error: {}", e));
+    //
+    //     println!("HTTP Server listening on http://{}", addr);
+    //     hyper::rt::run(server);
+    // });
 
     enclave
         .run()
