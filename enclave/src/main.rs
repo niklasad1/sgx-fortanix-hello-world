@@ -1,6 +1,6 @@
-use std::time::{SystemTime, UNIX_EPOCH};
-use std::net::{TcpStream, TcpListener};
 use std::io::{BufRead, BufReader, BufWriter, Write};
+use std::net::{TcpListener, TcpStream};
+use std::time::{SystemTime, UNIX_EPOCH};
 
 use chrono::prelude::*;
 
@@ -87,6 +87,8 @@ fn get_key_and_cert() -> (Pk, Certificate) {
 /// After a session is established, echo the incoming stream to the client.
 /// till EOF is detected.
 fn serve(mut conn: TcpStream, key: &mut Pk, cert: &mut Certificate) -> TlsResult<()> {
+    println!("Initiate establishing TLS session");
+
     let mut rng = Rdrand;
 
     let mut config = Config::new(Endpoint::Server, Transport::Stream, Preset::Default);
@@ -95,6 +97,7 @@ fn serve(mut conn: TcpStream, key: &mut Pk, cert: &mut Certificate) -> TlsResult
     let mut ctx = Context::new(&config)?;
 
     let mut buf = String::new();
+
     let session = ctx.establish(&mut conn, None)?;
     println!("Connection established!");
     let mut reader = BufReader::new(session);
