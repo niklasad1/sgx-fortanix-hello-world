@@ -2,6 +2,7 @@
 
 use std::io::{BufRead, BufReader, Read, Write};
 use std::net::{TcpListener, TcpStream};
+use std::path::Path;
 use std::{thread, time};
 
 use aesm_client::{AesmClient, QuoteType};
@@ -23,10 +24,10 @@ fn usage(name: &String) {
     println!("Usage:\n{} <path_to_sgxs_file>", name);
 }
 
-fn parse_args() -> Result<String, ()> {
+fn parse_args() -> Result<(String, String), ()> {
     let args: Vec<String> = std::env::args().collect();
-    if args.len() == 2 {
-        Ok(args[1].clone())
+    if args.len() == 3 {
+        Ok((args[1].clone(), args[2].clone()))
     } else {
         usage(&args[0]);
         Err(())
@@ -34,15 +35,15 @@ fn parse_args() -> Result<String, ()> {
 }
 
 fn main() {
-    let file = parse_args().unwrap();
+    let (enclave, enclave_signature) = parse_args().unwrap();
 
     let mut device = IsgxDevice::new()
         .unwrap()
         .einittoken_provider(AesmClient::new())
         .build();
 
-    let mut enclave_builder = EnclaveBuilder::new(file.as_ref());
-    enclave_builder.dummy_signature();
+    let mut enclave_builder = EnclaveBuilder::new(enclave.as_ref());
+    enclave_builder.signature(Path::new(&enclave_signature)).unwrap();
     let enclave = enclave_builder.build(&mut device).unwrap();
     println!("Starting Quoting TCP Server: {}", QUOTING_SOCKADDR);
 
