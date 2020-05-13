@@ -1,4 +1,4 @@
-#!/usr/bin/bash
+#!/usr/bin/env bash
 
 cargo build -p runner --release
 cargo build -p enclave --target=x86_64-fortanix-unknown-sgx --release
