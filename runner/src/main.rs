@@ -6,9 +6,9 @@ use std::path::Path;
 use std::{thread, time};
 
 use aesm_client::{AesmClient, QuoteType};
-use enclave_runner::EnclaveBuilder;
-use sgxs_loaders::isgx::Device as IsgxDevice;
+use enclave_runner::{EnclaveBuilder, Command as EnclaveRunner};
 use sgx_isa::Report;
+use sgxs_loaders::isgx::Device as IsgxDevice;
 
 // Intel IAS keys
 const SPID: &str = "5ADBE60B563D4BC970ED2EAC0916FD72";
@@ -21,7 +21,7 @@ const SPID_SIZE: usize = 16;
 const NONCE_SIZE: usize = 16;
 
 fn usage(name: &String) {
-    println!("Usage:\n{} <path_to_sgxs_file>", name);
+    println!("Usage:\n{} <path_to_sgxs_file, signature>", name);
 }
 
 fn parse_args() -> Result<(String, String), ()> {
@@ -34,21 +34,25 @@ fn parse_args() -> Result<(String, String), ()> {
     }
 }
 
-fn main() {
+fn build_enclave() -> EnclaveRunner {
     let (enclave, enclave_signature) = parse_args().unwrap();
-
     let mut device = IsgxDevice::new()
         .unwrap()
         .einittoken_provider(AesmClient::new())
         .build();
-
     let mut enclave_builder = EnclaveBuilder::new(enclave.as_ref());
-    enclave_builder.signature(Path::new(&enclave_signature)).unwrap();
-    let enclave = enclave_builder.build(&mut device).unwrap();
-    println!("Starting Quoting TCP Server: {}", QUOTING_SOCKADDR);
+    enclave_builder
+        .signature(Path::new(&enclave_signature))
+        .unwrap();
+    enclave_builder.build(&mut device).unwrap()
+}
 
-    let quote = thread::spawn(move || {
+// Starts a TCP server that waits for `Quoting requests`, it connects to the `Quoting Enclave`
+// Using the `aesmd service (/var/run/aesmd/)`
+fn run_quoting_handler() -> thread::JoinHandle<()> {
+    thread::spawn(move || {
         let listener = TcpListener::bind(QUOTING_SOCKADDR).expect("Tcp bind failed");
+        println!("Starting Quoting TCP Server: {}", QUOTING_SOCKADDR);
         for stream in listener.incoming() {
             let mut stream = stream.expect("faulty stream received");
             let mut report = Vec::new();
@@ -66,19 +70,26 @@ fn main() {
 
             assert_eq!(spid.len(), SPID_SIZE);
 
-            let quote = client.get_quote(
-                &quote_info,
-                report,
-                spid,
-                revocation_list,
-                QuoteType::Unlinkable,
-                nonce,
-            ).expect("quoting failed");
+            let quote = client
+                .get_quote(
+                    &quote_info,
+                    report,
+                    spid,
+                    revocation_list,
+                    QuoteType::Unlinkable,
+                    nonce,
+                )
+                .expect("quoting failed");
 
             println!("quote epid: {:?}", quote.quote());
             println!("quote report: {:?}", quote.qe_report());
         }
-    });
+    })
+}
+
+fn main() {
+    let enclave = build_enclave();
+    let quote = run_quoting_handler();
 
     thread::sleep(time::Duration::from_millis(20));
 
