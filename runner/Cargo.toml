@@ -5,12 +5,13 @@ authors = ["Niklas <niklasadolfsson1@gmail.com>"]
 edition = "2018"
 
 [dependencies]
-aesm-client = { path = "/home/niklasad1/Github/rust-sgx/aesm-client", features = ["sgxs"] }
 # aesm-client = { version = "0.4", features = ["sgxs"] }
-# enclave-runner = "0.2"
-enclave-runner = { path = "/home/niklasad1/Github/rust-sgx/enclave-runner" }
-futures = "0.1.21"
+# enclave-runner = "0.3"
 # sgxs-loaders = "0.2.1"
+aesm-client = { path = "/home/niklasad1/Github/rust-sgx/aesm-client", features = ["sgxs"] }
+crypto = { path = "../crypto" }
+enclave-runner = { path = "/home/niklasad1/Github/rust-sgx/enclave-runner" }
 sgxs-loaders = { path = "/home/niklasad1/Github/rust-sgx/sgxs-loaders" }
-sgx-isa = { path = "/home/niklasad1/Github/rust-sgx/sgx-isa" }
+sgx-isa = "0.3.1"
+# sgx-isa = { path = "/home/niklasad1/Github/rust-sgx/sgx-isa" }
 hex = "0.4"

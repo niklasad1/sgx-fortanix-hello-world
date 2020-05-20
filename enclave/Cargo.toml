@@ -6,7 +6,7 @@ edition = "2018"
 
 [dependencies]
 aesm-client = "0.4"
+crypto = { path = "../crypto" }
 sgx-isa = { path = "/home/niklasad1/Github/rust-sgx/sgx-isa", features = ["sgxstd", "serde"] }
 chrono = "0.4"
-mbedtls = { git = "https://github.com/niklasad1/rust-mbedtls", branch = "na-bump-bindgen", default-features = false, features = ["sgx"] }
 serde = "1.0"

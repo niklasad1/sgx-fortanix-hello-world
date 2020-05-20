@@ -3,10 +3,13 @@
 use std::io::{BufRead, BufReader, Read, Write};
 use std::net::{TcpListener, TcpStream};
 use std::path::Path;
+use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::Arc;
 use std::{thread, time};
 
 use aesm_client::{AesmClient, QuoteType};
-use enclave_runner::{EnclaveBuilder, Command as EnclaveRunner};
+use crypto::EphemeralKeypair;
+use enclave_runner::{Command as EnclaveRunner, EnclaveBuilder};
 use sgx_isa::Report;
 use sgxs_loaders::isgx::Device as IsgxDevice;
 
@@ -47,13 +50,28 @@ fn build_enclave() -> EnclaveRunner {
     enclave_builder.build(&mut device).unwrap()
 }
 
+fn run_enclave() -> thread::JoinHandle<()> {
+    thread::spawn(move || {
+        let enclave = build_enclave();
+        enclave
+            .run()
+            .map_err(|e| {
+                println!("Error while executing SGX enclave.\n{}", e);
+                std::process::exit(1)
+            })
+            .unwrap();
+    })
+}
+
 // Starts a TCP server that waits for `Quoting requests`, it connects to the `Quoting Enclave`
 // Using the `aesmd service (/var/run/aesmd/)`
-fn run_quoting_handler() -> thread::JoinHandle<()> {
+fn run_quoting_handler(started: Arc<AtomicBool>) -> thread::JoinHandle<()> {
     thread::spawn(move || {
         let listener = TcpListener::bind(QUOTING_SOCKADDR).expect("Tcp bind failed");
+        started.store(true, Ordering::Relaxed);
         println!("Starting Quoting TCP Server: {}", QUOTING_SOCKADDR);
         for stream in listener.incoming() {
+            println!("Rx Quoting Request");
             let mut stream = stream.expect("faulty stream received");
             let mut report = Vec::new();
             stream.read_to_end(&mut report).unwrap();
@@ -64,7 +82,7 @@ fn run_quoting_handler() -> thread::JoinHandle<()> {
             let nonce = vec![0_u8; NONCE_SIZE];
             let spid: Vec<u8> = hex::decode(SPID).unwrap();
 
-            println!("received EREPORT: {:?}", report);
+            // println!("received EREPORT: {:?}", report);
             // println!("target_info: {:?}", quote_info);
             // println!("SPID: {:?}", spid);
 
@@ -87,17 +105,35 @@ fn run_quoting_handler() -> thread::JoinHandle<()> {
     })
 }
 
-fn main() {
-    let enclave = build_enclave();
-    let quote = run_quoting_handler();
+fn main() -> std::io::Result<()> {
+    let quote_started = Arc::new(AtomicBool::new(false));
 
-    thread::sleep(time::Duration::from_millis(20));
+    let enclave = run_enclave();
+    let quote = run_quoting_handler(quote_started.clone());
 
-    enclave
-        .run()
-        .map_err(|e| {
-            println!("Error while executing SGX enclave.\n{}", e);
-            std::process::exit(1)
-        })
-        .unwrap();
+    thread::sleep(time::Duration::from_secs(5));
+
+    let mut ephemeral_key = EphemeralKeypair::new();
+
+    // initiate remote attestation
+    let mut stream = TcpStream::connect(ENCLAVE_SOCKADDR).unwrap();
+
+    // 1. Read public key
+    let mut g_a = vec![0; crypto::CURVE_25519_PUBLIC_KEY_SIZE];
+    stream.read_exact(&mut g_a)?;
+    println!("[CLIENT]: 1) rx (g_e): {:?}", g_a);
+
+    // 2. Compute shared secret and send public key
+    let g_ab = ephemeral_key.shared_secret(&g_a);
+
+    let mut m2: Vec<u8> = Vec::new();
+    m2.extend(ephemeral_key.public());
+    m2.extend(hex::decode(SPID).unwrap());
+    m2.extend(&g_ab);
+    println!("[CLIENT]: 2) tx (g_c || spid || g_ec)");
+    stream.write_all(&m2).unwrap();
+
+    loop {}
+
+    Ok(())
 }
