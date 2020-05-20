@@ -8,7 +8,8 @@ use std::sync::Arc;
 use std::{thread, time};
 
 use aesm_client::{AesmClient, QuoteType};
-use crypto::EphemeralKeypair;
+use crypto::ephemeral_diffie_hellman::{Keypair as EphemeralKeypair};
+use crypto::intel::SPID_SIZE;
 use enclave_runner::{Command as EnclaveRunner, EnclaveBuilder};
 use sgx_isa::Report;
 use sgxs_loaders::isgx::Device as IsgxDevice;
@@ -20,7 +21,6 @@ const PRIMARY_KEY: &str = "e9589de0dfe5482588600a73d08b70f6";
 const ENCLAVE_SOCKADDR: &str = "127.0.0.1:63001";
 const QUOTING_SOCKADDR: &str = "127.0.0.1:63002";
 
-const SPID_SIZE: usize = 16;
 const NONCE_SIZE: usize = 16;
 
 fn usage(name: &String) {
@@ -82,10 +82,6 @@ fn run_quoting_handler(started: Arc<AtomicBool>) -> thread::JoinHandle<()> {
             let nonce = vec![0_u8; NONCE_SIZE];
             let spid: Vec<u8> = hex::decode(SPID).unwrap();
 
-            // println!("received EREPORT: {:?}", report);
-            // println!("target_info: {:?}", quote_info);
-            // println!("SPID: {:?}", spid);
-
             assert_eq!(spid.len(), SPID_SIZE);
 
             let quote = client
@@ -119,19 +115,27 @@ fn main() -> std::io::Result<()> {
     let mut stream = TcpStream::connect(ENCLAVE_SOCKADDR).unwrap();
 
     // 1. Read public key
-    let mut g_a = vec![0; crypto::CURVE_25519_PUBLIC_KEY_SIZE];
-    stream.read_exact(&mut g_a)?;
-    println!("[CLIENT]: 1) rx (g_e): {:?}", g_a);
+    let mut g_e = [0_u8; 32];
+    stream.read_exact(&mut g_e)?;
+    println!("[CLIENT]: 1) rx (g_e): {:?}", g_e);
 
     // 2. Compute shared secret and send public key
-    let g_ab = ephemeral_key.shared_secret(&g_a);
+    let g_c = ephemeral_key.public_key();
+    let g_ec = ephemeral_key.shared_secret(g_e);
+    let spid = hex::decode(SPID).unwrap();
 
     let mut m2: Vec<u8> = Vec::new();
-    m2.extend(ephemeral_key.public());
-    m2.extend(hex::decode(SPID).unwrap());
-    m2.extend(&g_ab);
     println!("[CLIENT]: 2) tx (g_c || spid || g_ec)");
+    println!("[CLIENT]: 2) g_c: {:?}", g_c);
+    println!("[CLIENT]: 2) spid: {:?}", spid);
+    println!("[CLIENT]: 2) g_ec: {:?}", g_ec);
+
+    m2.extend(g_c.iter());
+    m2.extend(spid);
+    m2.extend(g_ec.iter());
     stream.write_all(&m2).unwrap();
+
+    // 3.
 
     loop {}
 
