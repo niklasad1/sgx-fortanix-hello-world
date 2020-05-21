@@ -7,9 +7,13 @@ edition = "2018"
 [dependencies]
 aesm-client = { version = "0.5", features = ["sgxs"] }
 attestation-types = { path = "../attestation_types" }
+base64 = "0.12.1"
 bincode = "1.2"
-enclave-runner = "0.3"
-sgxs-loaders = "0.2.1"
 crypto = { path = "../crypto" }
-sgx-isa = "0.3.2"
+enclave-runner = "0.3"
 hex = "0.4"
+hyper = "0.13.5"
+hyper-rustls = "0.20"
+sgx-isa = "0.3.2"
+sgxs-loaders = "0.2.1"
+tokio = { version = "0.2", features = ["full"] }
