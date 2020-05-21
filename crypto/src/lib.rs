@@ -2,8 +2,6 @@
 
 /// Ephemeral key managment based on curve 25519
 pub mod ephemeral_diffie_hellman;
-/// Intel specific keys and related constants
-pub mod intel;
 /// RSA verification key management
 pub mod verification_key;
 /// Hashing utilities

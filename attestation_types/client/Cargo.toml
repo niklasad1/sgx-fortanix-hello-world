@@ -1,0 +1,15 @@
+[package]
+name = "client-attestation"
+version = "0.1.0"
+authors = ["Niklas <niklasadolfsson1@gmail.com>"]
+edition = "2018"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+attestation = { path = "../attestation" }
+bincode = "1.2.1"
+crypto = { path = "../../crypto" }
+serde = { version = "1.0", features = ["serde_derive"] }
+sgx-isa = { version = "0.3.2", features = ["sgxstd", "serde"] }
+hyper-rustls = "0.20.0"

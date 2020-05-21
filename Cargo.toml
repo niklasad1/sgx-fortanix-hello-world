@@ -3,4 +3,5 @@ members = [
   "crypto",
 	"enclave",
 	"runner",
+  "attestation_types",
 ]

@@ -5,8 +5,7 @@ authors = ["Niklas <niklasadolfsson1@gmail.com>"]
 edition = "2018"
 
 [dependencies]
-aesm-client = "0.4"
+attestation-types = { path = "../attestation_types" }
+bincode = "1.2.1"
 crypto = { path = "../crypto" }
-sgx-isa = { path = "/home/niklasad1/Github/rust-sgx/sgx-isa", features = ["sgxstd", "serde"] }
-chrono = "0.4"
-serde = "1.0"
+sgx-isa = { version = "0.3.2", features = ["sgxstd"] }
