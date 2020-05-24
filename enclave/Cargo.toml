@@ -5,7 +5,7 @@ authors = ["Niklas <niklasadolfsson1@gmail.com>"]
 edition = "2018"
 
 [dependencies]
-attestation-types = { path = "../attestation_types" }
+attestation-types = { path = "../utils/attestation_types" }
 bincode = "1.2.1"
-crypto = { path = "../crypto" }
+crypto = { path = "../utils/crypto" }
 sgx-isa = { version = "0.3.2", features = ["sgxstd"] }

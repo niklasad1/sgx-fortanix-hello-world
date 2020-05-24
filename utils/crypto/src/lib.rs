@@ -11,3 +11,6 @@ pub mod hash {
         Hasher::hash(HashType::Sha256, data, out).unwrap();
     }
 }
+
+pub mod mac;
+pub mod key_derivation;

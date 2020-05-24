@@ -1,7 +1,8 @@
 [workspace]
 members = [
-  "crypto",
+  "client",
 	"enclave",
-	"runner",
-  "attestation_types",
+  "service-provider",
+  "utils/attestation_types",
+  "utils/crypto"
 ]

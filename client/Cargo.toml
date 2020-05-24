@@ -1,19 +1,15 @@
 [package]
-name = "runner"
+name = "client"
 version = "0.1.0"
 authors = ["Niklas <niklasadolfsson1@gmail.com>"]
 edition = "2018"
 
 [dependencies]
 aesm-client = { version = "0.5", features = ["sgxs"] }
-attestation-types = { path = "../attestation_types" }
-base64 = "0.12.1"
+attestation-types = { path = "../utils/attestation_types" }
 bincode = "1.2"
-crypto = { path = "../crypto" }
+crypto = { path = "../utils/crypto" }
 enclave-runner = "0.3"
 hex = "0.4"
-hyper = "0.13.5"
-hyper-rustls = "0.20"
 sgx-isa = "0.3.2"
 sgxs-loaders = "0.2.1"
-tokio = { version = "0.2", features = ["full"] }

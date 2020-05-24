@@ -1,49 +1,50 @@
 use std::io::{Read, Write};
 use std::net::{SocketAddr, TcpStream};
 
-use attestation_types::{EnclaveHello, ClientHello, QuoteReport};
+use attestation_types::*;
 use crypto::ephemeral_diffie_hellman::Keypair as EphemeralKeypair;
 use crypto::verification_key::Keypair as VerificationKeypair;
+use crypto::key_derivation;
 use sgx_isa::{Report, Targetinfo};
 
 use crate::*;
 
-// TODO(digital signature of shared secret)
 pub fn attest(
     _verification: VerificationKeypair,
     ephemeral_key: EphemeralKeypair,
     mut client_stream: TcpStream,
-    quote_sockaddr: SocketAddr,
 ) {
-    let g_e = ephemeral_key.public_key();
-    // 1. Send `EnclaveHello`
-    let enclave_hello = EnclaveHello { g_e };
-    bincode::serialize_into(&mut client_stream, &enclave_hello).unwrap();
-    println!("[ENCLAVE]: enclave_hello: {:?}", enclave_hello);
+    println!("[ENCLAVE]: client stream established; start attestation");
 
-    // 2. Read ClientHello
-    let client_hello: ClientHello = bincode::deserialize_from(&mut client_stream).unwrap();
-    println!("[ENCLAVE]: client_hello: {:?}", client_hello);
+    // 1. Send public key the client
+    bincode::serialize_into(&mut client_stream, &ephemeral_key.public_key()).unwrap();
 
-    let g_ec = ephemeral_key.shared_secret(client_hello.g_c);
-    assert_eq!(client_hello.g_ce, g_ec);
+    // 2.
+    let msg2: MessageTwo = bincode::deserialize_from(&mut client_stream).unwrap();
+    println!("[ENCLAVE]: received msg2: {:?}", msg2);
 
-    // g_ec and g_ce is now our `shared secret key`
-    let mut digest = [0_u8; 64];
-    let mut verification_report = Vec::new();
-    verification_report.extend(g_e.iter());
-    verification_report.extend(client_hello.g_c.iter());
-    crypto::hash::sha256(&verification_report, &mut digest);
-    //
-    let q = quote(digest, quote_sockaddr);
-    println!("quote: {:?}", q);
-    //
+    let g_ab = ephemeral_key.shared_secret(msg2.g_b.into());
+    // TODO: this should be digitally signed and verified here...
+    assert_eq!(g_ab, msg2.g_ab);
+    let kdk = key_derivation::generate_kdk(msg2.g_ab);
+    let smk = key_derivation::generate_smk(&kdk);
 
-    // 3: Send Quote
-    let quote_report = QuoteReport { q };
-    bincode::serialize_into(&mut client_stream, &quote_report).unwrap();
+    let mut mac_input: Vec<u8> = Vec::new();
 
-    // 4. .... TODO
+    mac_input.extend(msg2.g_b.as_bytes());
+    mac_input.extend(msg2.spid.as_bytes());
+    mac_input.extend(&msg2.quote_kind.to_be_bytes());
+    mac_input.extend(&msg2.kdf_id.to_be_bytes());
+    mac_input.extend(g_ab.as_bytes());
+    mac_input.extend(msg2.sig_rl.clone());
+
+    // check that the MAC's is the same
+    assert!(crypto::mac::cmac_aes128_verify(smk.as_bytes(), &mac_input, &msg2.mac));
+
+    println!("[ENCLAVE]: TODO build message3");
+
+
+    loop {}
 }
 
 fn quote(manifest_data: [u8; 64], quote: SocketAddr) -> Vec<u8> {

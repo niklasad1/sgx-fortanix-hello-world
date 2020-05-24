@@ -16,7 +16,7 @@ pub struct Config {
 pub fn run(address: &'static str, config: Config) -> thread::JoinHandle<()> {
     thread::spawn(move || {
         let listener = TcpListener::bind(address).expect("Tcp bind failed");
-        println!("Starting Quoting TCP Server: {}", address);
+        println!("[Quoting]: Starting at {}", address);
 
         let client = AesmClient::new();
         let quote_info = client.init_quote().expect("init quote failed");

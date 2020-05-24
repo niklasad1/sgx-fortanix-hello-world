@@ -2,17 +2,15 @@ use std::net::TcpStream;
 use std::path::Path;
 use std::{thread, time};
 
-use aesm_client::{AesmClient, QuoteType};
+use aesm_client::AesmClient;
 use crypto::ephemeral_diffie_hellman::Keypair as EphemeralKeypair;
 use enclave_runner::{Command as EnclaveRunner, EnclaveBuilder};
 use sgxs_loaders::isgx::Device as IsgxDevice;
 
 mod attestation;
-mod quoting;
 
 const ENCLAVE_SOCKADDR: &str = "127.0.0.1:63001";
-const QUOTING_SOCKADDR: &str = "127.0.0.1:63002";
-const SPID: &str = "5ADBE60B563D4BC970ED2EAC0916FD72";
+const SERVICE_PROVIDER_SOCKADDR: &str = "127.0.0.1:63004";
 
 fn usage(name: &String) {
     println!("Usage:\n{} <path_to_sgxs_file, signature>", name);
@@ -56,20 +54,16 @@ fn run_enclave() -> thread::JoinHandle<()> {
 
 fn main() -> std::io::Result<()> {
     let _enclave = run_enclave();
-    let quote_config = quoting::Config {
-        spid: hex::decode(SPID).unwrap(),
-        revocation_list: Vec::new(),
-        quote_kind: QuoteType::Unlinkable.into(),
-    };
-    let _quote = quoting::run(QUOTING_SOCKADDR, quote_config);
 
     thread::sleep(time::Duration::from_secs(5));
 
-    let ephemeral_key = EphemeralKeypair::new();
+    println!("[CLIENT]: loaded enclave");
 
     // initiate remote attestation
-    let stream = TcpStream::connect(ENCLAVE_SOCKADDR)?;
-    attestation::attest(ephemeral_key, stream);
+    let enclave_stream = TcpStream::connect(ENCLAVE_SOCKADDR)?;
+    let sp_stream = TcpStream::connect(SERVICE_PROVIDER_SOCKADDR)?;
+    let aesm_client = AesmClient::new();
+    attestation::attest(aesm_client, enclave_stream, sp_stream);
 
     // secure channel established.....!
 
