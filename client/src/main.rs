@@ -3,7 +3,6 @@ use std::path::Path;
 use std::{thread, time};
 
 use aesm_client::AesmClient;
-use crypto::ephemeral_diffie_hellman::Keypair as EphemeralKeypair;
 use enclave_runner::{Command as EnclaveRunner, EnclaveBuilder};
 use sgxs_loaders::isgx::Device as IsgxDevice;
 

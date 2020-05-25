@@ -1,5 +1,5 @@
-use std::io::{Read, Write};
-use std::net::{SocketAddr, TcpStream};
+use std::io::Write;
+use std::net::TcpStream;
 
 use attestation_types::*;
 use crypto::ephemeral_diffie_hellman::Keypair as EphemeralKeypair;
@@ -7,17 +7,17 @@ use crypto::verification_key::Keypair as VerificationKeypair;
 use crypto::key_derivation;
 use sgx_isa::{Report, Targetinfo};
 
-use crate::*;
-
 pub fn attest(
     _verification: VerificationKeypair,
     ephemeral_key: EphemeralKeypair,
     mut client_stream: TcpStream,
 ) {
     println!("[ENCLAVE]: client stream established; start attestation");
+    
+    let g_a = ephemeral_key.public_key();
 
     // 1. Send public key the client
-    bincode::serialize_into(&mut client_stream, &ephemeral_key.public_key()).unwrap();
+    bincode::serialize_into(&mut client_stream, &g_a).unwrap();
 
     // 2.
     let msg2: MessageTwo = bincode::deserialize_from(&mut client_stream).unwrap();
@@ -29,38 +29,47 @@ pub fn attest(
     let kdk = key_derivation::generate_kdk(msg2.g_ab);
     let smk = key_derivation::generate_smk(&kdk);
 
-    let mut mac_input: Vec<u8> = Vec::new();
+    assert!(msg2.verify(&smk, crypto::mac::cmac_aes128_verify), "mac in msg2 failed");
 
-    mac_input.extend(msg2.g_b.as_bytes());
-    mac_input.extend(msg2.spid.as_bytes());
-    mac_input.extend(&msg2.quote_kind.to_be_bytes());
-    mac_input.extend(&msg2.kdf_id.to_be_bytes());
-    mac_input.extend(g_ab.as_bytes());
-    mac_input.extend(msg2.sig_rl.clone());
+    // 3. Build  `MessageThree`
+    // 
+    //  a) get quote
+    //
+    let vk = key_derivation::generate_vk(&kdk);
+    // println!("[ENCLAVE]: g_a: {:?}", g_a);
+    // println!("[ENCLAVE]: g_b: {:?}", msg2.g_b);
+    // println!("[ENCLAVE]: kdk: {:?}", kdk);
+    // println!("[ENCLAVE]: smk: {:?}", smk);
+    // println!("[ENCLAVE]: vk: {:?}", vk);
 
-    // check that the MAC's is the same
-    assert!(crypto::mac::cmac_aes128_verify(smk.as_bytes(), &mac_input, &msg2.mac));
+    let digest = crypto::intel::quote_manifest(g_a, msg2.g_b, vk);
 
-    println!("[ENCLAVE]: TODO build message3");
+    println!("[ENCLAVE]: quote_digest: {:?}", &digest[0..32]);
+    println!("[ENCLAVE]: quote_digest: {:?}", &digest[32..64]);
 
+    let q = quote(&digest, &mut client_stream);
+    let ps_security_prop: Vec<u8> = Vec::new();
+
+    let msg3 = MessageThree::new(g_a, ps_security_prop, q, crypto::mac::cmac_aes128, &smk);
+
+    bincode::serialize_into(&mut client_stream, &msg3).unwrap();
 
     loop {}
 }
 
-fn quote(manifest_data: [u8; 64], quote: SocketAddr) -> Vec<u8> {
-    let mut stream = TcpStream::connect(quote).unwrap();
-    let mut qe_target_info = [0u8; Targetinfo::UNPADDED_SIZE];
-    stream.read_exact(&mut qe_target_info).unwrap();
+
+fn quote(manifest_data: &[u8; 64], mut stream: &mut TcpStream) -> Vec<u8> {
+    let qe_target_info: Vec<u8> = bincode::deserialize_from(&mut stream).unwrap();
 
     let target_info = Targetinfo::try_copy_from(&qe_target_info).unwrap();
-    let report = Report::for_target(&target_info, &manifest_data);
+    // TODO: check why `serialize_into` doesn't work
+    let report = Report::for_target(&target_info, manifest_data);
+    println!("[ENCLAVE]: reportdata 0..32: {:?}", &report.reportdata[0..32]);
+    println!("[ENCLAVE]: reportdata 32..64: {:?}", &report.reportdata[32..64]);
     stream.write_all(report.as_ref()).unwrap();
 
-    // TODO(verify this length...)
-    let mut quote = vec![0u8; 1116];
-    stream.read_exact(&mut quote[..]).unwrap();
-    let mut qe_report = vec![0u8; 432];
-    stream.read_exact(&mut qe_report[..]).unwrap();
+    let quote: Vec<u8> = bincode::deserialize_from(&mut stream).unwrap();
+    let quote_report: Vec<u8> = bincode::deserialize_from(&mut stream).unwrap();
 
     quote
 }

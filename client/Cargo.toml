@@ -11,5 +11,5 @@ bincode = "1.2"
 crypto = { path = "../utils/crypto" }
 enclave-runner = "0.3"
 hex = "0.4"
-sgx-isa = "0.3.2"
+sgx-isa =  { version = "0.3.2", features = ["serde"] }
 sgxs-loaders = "0.2.1"

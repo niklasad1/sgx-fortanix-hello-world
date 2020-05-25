@@ -8,4 +8,4 @@ edition = "2018"
 attestation-types = { path = "../utils/attestation_types" }
 bincode = "1.2.1"
 crypto = { path = "../utils/crypto" }
-sgx-isa = { version = "0.3.2", features = ["sgxstd"] }
+sgx-isa = { version = "0.3.2", features = ["sgxstd", "serde"] }

@@ -12,7 +12,7 @@ const IAS_SIGRL_URL: &str = "https://api.trustedservices.intel.com/sgx/dev/attes
 pub const SPID: &str = "5ADBE60B563D4BC970ED2EAC0916FD72";
 pub const API_KEY: &str = "e9589de0dfe5482588600a73d08b70f6";
 
-pub fn report_request(quote: Vec<u8>) {
+pub fn get_report(quote: &[u8]) {
     let client: client::Client<_, hyper::Body> =
         client::Client::builder().build(hyper_rustls::HttpsConnector::new());
 
@@ -43,7 +43,7 @@ pub fn report_request(quote: Vec<u8>) {
 ///
 /// Returns `Base 64-encoded SigRL for EPID group identified by {gid} parameter` in success and it
 /// may be empty
-pub fn signature_revocation_list_request(gid: Vec<u8>) -> Vec<u8> {
+pub fn get_signature_revocation_list(gid: Vec<u8>) -> Vec<u8> {
     let client: client::Client<_, hyper::Body> =
         client::Client::builder().build(hyper_rustls::HttpsConnector::new());
     let url = format!("{}/{}", IAS_SIGRL_URL, hex::encode(gid));

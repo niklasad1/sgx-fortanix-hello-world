@@ -12,5 +12,20 @@ pub mod hash {
     }
 }
 
+pub mod intel {
+    use attestation_types::{H128, Public};
+
+    pub fn quote_manifest(g_a: Public, g_b: Public, vk: H128) -> [u8; 64] {
+        let mut input: Vec<u8> = Vec::new();
+        let mut digest = [0_u8; 64];
+
+        input.extend(g_a.as_bytes());
+        input.extend(g_b.as_bytes());
+        input.extend(vk.as_bytes());
+        crate::hash::sha256(&input, &mut digest);
+        digest
+    }
+}
+
 pub mod mac;
 pub mod key_derivation;
