@@ -1,4 +1,3 @@
-use crate::ephemeral_diffie_hellman::*;
 use crate::mac;
 use attestation_types::*;
 

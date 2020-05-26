@@ -174,5 +174,6 @@ impl MessageThree {
 /// Service provider -> Client
 #[derive(Debug, Serialize, Deserialize)]
 pub struct MessageFour {
-    pub encrypted_secret: Vec<u8>,
+    pub enclave_trusted: bool,
+    pub pse_trusted: bool,
 }

@@ -42,6 +42,11 @@ pub fn attest(aesm_client: AesmClient, mut enclave_stream: TcpStream, mut sp_str
     println!("[CLIENT]: received msg3");
     bincode::serialize_into(&mut sp_stream, &msg3).unwrap();
 
+    let msg4: MessageFour = bincode::deserialize_from(&mut sp_stream).unwrap();
+    println!("[CLIENT]: received msg4: {:?}", msg4);
+    bincode::serialize_into(&mut enclave_stream, &msg4).unwrap();
+    println!("[CLIENT]: done");
+
     loop {}
 }
 

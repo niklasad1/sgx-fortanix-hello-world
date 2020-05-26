@@ -3,17 +3,12 @@ use std::net::TcpStream;
 
 use attestation_types::*;
 use crypto::ephemeral_diffie_hellman::Keypair as EphemeralKeypair;
-use crypto::verification_key::Keypair as VerificationKeypair;
 use crypto::key_derivation;
 use sgx_isa::{Report, Targetinfo};
 
-pub fn attest(
-    _verification: VerificationKeypair,
-    ephemeral_key: EphemeralKeypair,
-    mut client_stream: TcpStream,
-) {
+pub fn attest(ephemeral_key: EphemeralKeypair, mut client_stream: TcpStream) -> (H128, H128) {
     println!("[ENCLAVE]: client stream established; start attestation");
-    
+
     let g_a = ephemeral_key.public_key();
 
     // 1. Send public key the client
@@ -32,7 +27,7 @@ pub fn attest(
     assert!(msg2.verify(&smk, crypto::mac::cmac_aes128_verify), "mac in msg2 failed");
 
     // 3. Build  `MessageThree`
-    // 
+    //
     //  a) get quote
     //
     let vk = key_derivation::generate_vk(&kdk);
@@ -44,17 +39,17 @@ pub fn attest(
 
     let digest = crypto::intel::quote_manifest(g_a, msg2.g_b, vk);
 
-    println!("[ENCLAVE]: quote_digest: {:?}", &digest[0..32]);
-    println!("[ENCLAVE]: quote_digest: {:?}", &digest[32..64]);
-
     let q = quote(&digest, &mut client_stream);
     let ps_security_prop: Vec<u8> = Vec::new();
 
     let msg3 = MessageThree::new(g_a, ps_security_prop, q, crypto::mac::cmac_aes128, &smk);
 
     bincode::serialize_into(&mut client_stream, &msg3).unwrap();
+    let msg4: MessageFour = bincode::deserialize_from(&mut client_stream).unwrap();
 
-    loop {}
+    println!("[ENCLAVE]: msg4: {:?}", msg4);
+
+    (key_derivation::generate_mk(&kdk), key_derivation::generate_sk(&kdk))
 }
 
 
@@ -64,8 +59,6 @@ fn quote(manifest_data: &[u8; 64], mut stream: &mut TcpStream) -> Vec<u8> {
     let target_info = Targetinfo::try_copy_from(&qe_target_info).unwrap();
     // TODO: check why `serialize_into` doesn't work
     let report = Report::for_target(&target_info, manifest_data);
-    println!("[ENCLAVE]: reportdata 0..32: {:?}", &report.reportdata[0..32]);
-    println!("[ENCLAVE]: reportdata 32..64: {:?}", &report.reportdata[32..64]);
     stream.write_all(report.as_ref()).unwrap();
 
     let quote: Vec<u8> = bincode::deserialize_from(&mut stream).unwrap();

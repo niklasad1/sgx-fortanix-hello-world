@@ -1,10 +1,8 @@
-use std::io::{Read, Write};
 use std::net::TcpListener;
 
 use attestation_types::*;
 use crypto::ephemeral_diffie_hellman::Keypair as EphemeralKeypair;
 use crypto::key_derivation;
-use sgx_isa::Report;
 
 mod ias;
 
@@ -50,15 +48,10 @@ fn main() -> std::io::Result<()> {
     let msg3: MessageThree = bincode::deserialize_from(&mut stream).unwrap();
     println!("[SERVICE PROVIDER]: received msg3");
 
-    //4. Validation before creating MessageFour 
+    //4. Validation before creating MessageFour
     assert_eq!(msg1.g_a, msg3.g_a, "g_a in msg1 != g_b in msg3");
     assert!(msg3.verify(&smk, crypto::mac::cmac_aes128_verify), "mac in msg3 failed");
     let vk = key_derivation::generate_vk(&kdk);
-    // println!("[SP]: g_a: {:?}", msg3.g_a);
-    // println!("[SP]: g_b: {:?}", g_b);
-    // println!("[SP]: kdk: {:?}", kdk);
-    // println!("[SP]: smk: {:?}", smk);
-    // println!("[SP]: vk: {:?}", vk);
     let quote_manifest = crypto::intel::quote_manifest(msg3.g_a, g_b, vk);
 
     // The deserialization doesn't seem the work properly... maybe I don't understand???
@@ -66,9 +59,32 @@ fn main() -> std::io::Result<()> {
     // println!("{:?}", r);
 
     assert_eq!(&quote_manifest[0..32], &msg3.quote[368..400], "reportdata mismatch");
+    assert_eq!(&quote_manifest[32..64], &msg3.quote[400..432], "reportdata mismatch");
 
     // send quote to `IAS`
-    ias::get_report(&msg3.quote);
+    //
+    // 1. validate certificate signature
+    // 2. validate report signature
+    let report = ias::get_report(&msg3.quote);
 
-    loop {}
+    // TODO: proper verification
+    println!("[SERVICE PROVIDER]: REPORT attestation status: {}", report.isv_enclave_quote_status);
+    println!("[SERVICE PROVIDER]: REPORT PLATFORM BLOB: {:?}", report.platform_info_blob);
+    println!("[SERVICE PROVIDER]: Quote MRSIGNER: {:?}", &msg3.quote[176..208]);
+    println!("[SERVICE PROVIDER]: Quote MRENCLAVE: {:?}", &msg3.quote[112..144]);
+    println!("[SERVICE PROVIDER]: Quote CPUSVN: {:?}", &msg3.quote[48..64]);
+    println!("[SERVICE PROVIDER]: Quote ISVSVN: {:?}", &msg3.quote[306..308]);
+
+    let mk = key_derivation::generate_mk(&kdk);
+    let sk = key_derivation::generate_sk(&kdk);
+
+    let msg4 = MessageFour {
+       enclave_trusted: true,
+       pse_trusted: false,
+    };
+
+    bincode::serialize_into(&mut stream, &msg4).unwrap();
+    println!("[SERVICE PROVIDER]: signing_key: {:?}", sk);
+    println!("[SERVICE PROVIDER]: master_key: {:?}", mk);
+    Ok(())
 }

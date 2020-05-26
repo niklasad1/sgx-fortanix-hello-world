@@ -3,6 +3,8 @@
 # Exit immediately if a command exits with a non-zero status
 set -e
 
+INTEL_CERT_URL="https://certificates.trustedservices.intel.com/Intel_SGX_Attestation_RootCA.pem"
+INTEL_ROOT_CERT=Intel_SGX_Attestation_RootCA.pem
 TARGET=./target/x86_64-fortanix-unknown-sgx/release/enclave
 TARGET_SGXS=$TARGET.sgxs
 TARGET_SIGN=$TARGET.sign
@@ -10,6 +12,11 @@ PRIVATE_KEY=private.pem
 PUBLIC_KEY=public.pem
 CLIENT=./target/release/client
 SERVICE_PROVIDER=./target/release/service-provider
+
+
+if [ ! -f $INTEL_ROOT_CERT ]; then
+  curl -O $INTEL_CERT_URL
+fi
 
 if [ ! -f $PRIVATE_KEY ]; then
     openssl genrsa -3 3072 > $PRIVATE_KEY
