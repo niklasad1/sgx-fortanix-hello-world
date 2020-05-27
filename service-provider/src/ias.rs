@@ -43,6 +43,7 @@ impl ReportSigningCertificateChain {
 pub struct AttestationReport {
     id: String,
     timestamp: String,
+    version: u64,
     /// Possible values:
     ///
     /// "OK"
@@ -61,8 +62,10 @@ pub struct AttestationReport {
     nonce: Option<String>,
     // only for linkable
     epid_pseudonym: Option<String>,
+    #[serde(rename = "advisoryURL")]
     advisory_url: Option<String>,
-    advisory_ids: Option<String>,
+    #[serde(rename = "advisoryIDs")]
+    advisory_ids: Option<Vec<String>>,
 }
 
 pub fn get_report(quote: &[u8]) -> AttestationReport {

@@ -1,6 +1,6 @@
 use aes::Aes128;
-use attestation_types::H128;
 use cmac::{Cmac, Mac};
+use types::H128;
 
 pub fn cmac_aes128(key: &H128, data: &[u8]) -> H128 {
     let mut mac = Cmac::<Aes128>::new_varkey(key.as_bytes()).unwrap();

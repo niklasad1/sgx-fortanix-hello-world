@@ -3,6 +3,7 @@ members = [
   "client",
 	"enclave",
   "service-provider",
-  "utils/attestation_types",
+  "utils/types",
+  "utils/common",
   "utils/crypto"
 ]

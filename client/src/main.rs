@@ -5,6 +5,8 @@ use std::{thread, time};
 use aesm_client::AesmClient;
 use enclave_runner::{Command as EnclaveRunner, EnclaveBuilder};
 use sgxs_loaders::isgx::Device as IsgxDevice;
+use types::error::Error;
+use attestation::ClientAttestation;
 
 mod attestation;
 
@@ -40,18 +42,15 @@ fn build_enclave() -> EnclaveRunner {
 
 fn run_enclave() -> thread::JoinHandle<()> {
     thread::spawn(move || {
-        let enclave = build_enclave();
-        enclave
-            .run()
-            .map_err(|e| {
-                println!("Error while executing SGX enclave.\n{}", e);
-                std::process::exit(1)
-            })
-            .unwrap();
+        // blocks the entire thread
+        // would be nice if `run()` actually returned the status...
+        build_enclave()
+        .run()
+        .expect("Enclave runner shouldn't fail; qed");
     })
 }
 
-fn main() -> std::io::Result<()> {
+fn main() -> Result<(), Error> {
     let _enclave = run_enclave();
 
     thread::sleep(time::Duration::from_secs(5));
@@ -59,12 +58,12 @@ fn main() -> std::io::Result<()> {
     println!("[CLIENT]: loaded enclave");
 
     // initiate remote attestation
-    let enclave_stream = TcpStream::connect(ENCLAVE_SOCKADDR)?;
-    let sp_stream = TcpStream::connect(SERVICE_PROVIDER_SOCKADDR)?;
+    let mut enclave_stream = TcpStream::connect(ENCLAVE_SOCKADDR)?;
+    let mut sp_stream = TcpStream::connect(SERVICE_PROVIDER_SOCKADDR)?;
     let aesm_client = AesmClient::new();
-    attestation::attest(aesm_client, enclave_stream, sp_stream);
+    ClientAttestation::new(aesm_client, &mut enclave_stream, &mut sp_stream).attest()?;
 
-    // secure channel established.....!
+    // Secure channel established or not the client should not know for sure...
 
     loop {}
 }

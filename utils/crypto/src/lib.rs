@@ -1,29 +1,13 @@
 //! Crypto utility module wrapped on-top of `mbedtls` for `rust-sgx` applications
 
 /// Ephemeral key managment based on curve 25519
-pub mod ephemeral_diffie_hellman;
+pub mod key_agreement;
 /// Hashing utilities
-pub mod hash {
-    use mbedtls::hash::{Md as Hasher, Type as HashType};
-    pub fn sha256(data: &[u8], out: &mut [u8]) {
-        Hasher::hash(HashType::Sha256, data, out).unwrap();
-    }
-}
-
-pub mod intel {
-    use attestation_types::{Public, H128};
-
-    pub fn quote_manifest(g_a: Public, g_b: Public, vk: H128) -> [u8; 64] {
-        let mut input: Vec<u8> = Vec::new();
-        let mut digest = [0_u8; 64];
-
-        input.extend(g_a.as_bytes());
-        input.extend(g_b.as_bytes());
-        input.extend(vk.as_bytes());
-        crate::hash::sha256(&input, &mut digest);
-        digest
-    }
-}
+pub mod hash;
+/// Intel specific key derivation
+pub mod key_derivation;
+/// Message authentication
+pub mod mac;
 
 pub mod x509 {
     use mbedtls::x509::Certificate as InnerCertificate;
@@ -66,5 +50,3 @@ pub mod x509 {
     }
 }
 
-pub mod key_derivation;
-pub mod mac;

@@ -5,10 +5,11 @@ authors = ["Niklas <niklasadolfsson1@gmail.com>"]
 edition = "2018"
 
 [dependencies]
-aesm-client = { version = "0.5", features = ["sgxs"] }
-attestation-types = { path = "../utils/attestation_types" }
+aesm-client = { version = "0.5.0", features = ["sgxs"] }
+types = { path = "../utils/types" }
 bincode = "1.2"
 crypto = { path = "../utils/crypto" }
+common = { path = "../utils/common" }
 enclave-runner = "0.3"
 hex = "0.4"
 sgx-isa =  { version = "0.3.2", features = ["serde"] }

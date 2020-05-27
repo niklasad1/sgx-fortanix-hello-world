@@ -7,9 +7,10 @@ edition = "2018"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-attestation-types = { path = "../utils/attestation_types" }
+types = { path = "../utils/types" }
 base64 = "0.12.1"
 bincode = "1.2"
+common = { path = "../utils/common" }
 crypto = { path = "../utils/crypto" }
 hex = "0.4"
 hyper = "0.13"
